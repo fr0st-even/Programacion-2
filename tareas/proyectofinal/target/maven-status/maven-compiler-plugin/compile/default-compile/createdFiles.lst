@@ -1,0 +1,5 @@
+com/example/studentsapi/controller/StudentController.class
+com/example/studentsapi/service/StudentService.class
+com/example/studentsapi/model/Student.class
+com/example/studentsapi/repository/StudentRepository.class
+com/example/studentsapi/StudentsApiApplication.class
