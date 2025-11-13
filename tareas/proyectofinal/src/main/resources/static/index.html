@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Estudiantes</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background: #f5f5f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            width: 100%;
+            background: white;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+        }
+
+        h2, h3 {
+            color: #555;
+            margin-top: 30px;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        form {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 30px;
+        }
+
+        input, select {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: #007bff;
+        }
+
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px;
+            cursor: pointer;
+            border-radius: 5px;
+            font-size: 14px;
+            transition: background 0.3s;
+        }
+
+        button:hover {
+            background: #0056b3;
+        }
+
+        #verPorId {
+            background: #f9f9f9;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+
+        #verPorId input {
+            margin-bottom: 10px;
+        }
+
+        #resultadoId {
+            margin-top: 15px;
+        }
+
+        #lista {
+            list-style: none;
+            padding: 0;
+        }
+
+        #lista li {
+            background: #f9f9f9;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 8px;
+            border-left: 4px solid #007bff;
+        }
+
+        #lista li strong {
+            color: #007bff;
+            font-size: 16px;
+        }
+
+        #lista li button {
+            margin-top: 10px;
+            margin-right: 5px;
+            padding: 6px 12px;
+            font-size: 12px;
+        }
+
+        .resultado-busqueda {
+            border: 1px solid #ccc;
+            padding: 15px;
+            border-radius: 6px;
+            background: white;
+        }
+
+        .resultado-busqueda h4 {
+            color: #007bff;
+            margin-bottom: 10px;
+        }
+
+        .resultado-busqueda p {
+            margin: 5px 0;
+        }
+
+        .error {
+            color: #dc3545;
+            padding: 10px;
+            background: #f8d7da;
+            border-radius: 5px;
+            border: 1px solid #f5c6cb;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>Gestión de Estudiantes</h1>
+
+    <form id="studentForm">
+        <input type="number" id="carnet" placeholder="Carné" min="1" required>
+        <input type="text" id="nombre" placeholder="Nombre" required>
+        <input type="email" id="correo" placeholder="Correo" required>
+        <input type="text" id="numero_telefono" placeholder="Teléfono (8 dígitos)" required>
+        <select id="idioma" required>
+            <option value="">Seleccione un idioma</option>
+            <option value="español">Español</option>
+            <option value="inglés">Inglés</option>
+            <option value="francés">Francés</option>
+        </select>
+        <button type="submit">Agregar Estudiante</button>
+    </form>
+
+    <div id="verPorId">
+        <h3>Consultar estudiante por Carné</h3>
+        <input type="number" id="idBuscar" placeholder="Ingrese el carné" min="1">
+        <button id="btnBuscarId">Buscar</button>
+        <div id="resultadoId"></div>
+    </div>
+
+    <h2>Lista de estudiantes</h2>
+    <ul id="lista"></ul>
+</div>
+
+<script>
+    const API = "/students";
+    let estudiantes = [];
+
+    async function cargar() {
+        const res = await fetch(API);
+        estudiantes = await res.json();
+        renderLista(estudiantes);
+    }
+
+    function renderLista(data) {
+        const lista = document.getElementById("lista");
+        if (data.length === 0) {
+            lista.innerHTML = "<p style='text-align:center;color:#999;'>No hay estudiantes registrados</p>";
+            return;
+        }
+        lista.innerHTML = "";
+        data.forEach(s => {
+            lista.innerHTML += `
+                <li>
+                    <strong>#${s.carnet} - ${s.nombre}</strong><br>
+                    📧 ${s.correo} | 📱 ${s.numero_telefono} | 🌐 ${s.idioma}
+                    <br>
+                    <button onclick="editarCompleto(${s.carnet})">✏️ Editar completo</button>
+                    <button onclick="editarParcial(${s.carnet})">📝 Editar parcial</button>
+                    <button onclick="borrar(${s.carnet})" style="background:#dc3545;">🗑️ Eliminar</button>
+                </li>`;
+        });
+    }
+
+    document.getElementById("studentForm").addEventListener("submit", async e => {
+        e.preventDefault();
+        const carnetVal = Number(carnet.value);
+        if (!carnetVal || carnetVal < 1) {
+            alert("Carné debe ser positivo");
+            return;
+        }
+
+        const body = {
+            carnet: carnetVal,
+            nombre: nombre.value,
+            correo: correo.value,
+            numero_telefono: numero_telefono.value,
+            idioma: idioma.value
+        };
+
+        try {
+            const res = await fetch(API, {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify(body)
+            });
+
+            if (res.ok) {
+                e.target.reset();
+                cargar();
+                alert("Estudiante agregado exitosamente");
+            } else {
+                const error = await res.text();
+                alert("❌ Error: " + error);
+            }
+        } catch (error) {
+            alert("Error al agregar estudiante");
+        }
+    });
+
+    async function borrar(carnet) {
+        if (!confirm("¿Está seguro de eliminar este estudiante?")) return;
+
+        try {
+            await fetch(`${API}/${carnet}`, { method: "DELETE" });
+            cargar();
+            alert("Estudiante eliminado");
+        } catch (error) {
+            alert("Error al eliminar estudiante");
+        }
+    }
+
+    async function editarCompleto(carnetActual) {
+        const res = await fetch(`${API}/${carnetActual}`);
+        if (!res.ok) {
+            alert("No encontrado");
+            return;
+        }
+        const s = await res.json();
+
+        const carnetNuevo = prompt("Carné:", s.carnet);
+        if (carnetNuevo === null) return;
+        const nombre = prompt("Nombre:", s.nombre);
+        if (nombre === null) return;
+        const correo = prompt("Correo:", s.correo);
+        if (correo === null) return;
+        const tel = prompt("Teléfono (8 dígitos):", s.numero_telefono);
+        if (tel === null) return;
+        const idioma = prompt("Idioma (español/inglés/francés):", s.idioma);
+        if (idioma === null) return;
+
+        const body = {
+            carnet: Number(carnetNuevo),
+            nombre,
+            correo,
+            numero_telefono: tel,
+            idioma
+        };
+
+        try {
+            await fetch(`${API}/${carnetActual}`, {
+                method: "PUT",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify(body)
+            });
+            cargar();
+            alert("Estudiante actualizado");
+        } catch (error) {
+            alert("Error al actualizar estudiante");
+        }
+    }
+
+    async function editarParcial(carnetActual) {
+        const campo = prompt("Campo a editar (carnet, nombre, correo, numero_telefono, idioma):");
+        if (!campo) return;
+        const valor = prompt("Nuevo valor:");
+        if (!valor) return;
+
+        const body = { [campo]: campo === "carnet" ? Number(valor) : valor };
+
+        try {
+            await fetch(`${API}/${carnetActual}`, {
+                method: "PATCH",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify(body)
+            });
+            cargar();
+            alert("Campo actualizado");
+        } catch (error) {
+            alert("Error al actualizar campo");
+        }
+    }
+
+    document.getElementById("btnBuscarId").addEventListener("click", async () => {
+        const carnetVal = Number(document.getElementById("idBuscar").value);
+        const box = document.getElementById("resultadoId");
+
+        if (!carnetVal || carnetVal < 1) {
+            box.innerHTML = `<p class="error">❌ Ingresa un carné válido (>= 1)</p>`;
+            return;
+        }
+
+        const res = await fetch(`${API}/${carnetVal}`);
+        if (!res.ok) {
+            box.innerHTML = `<p class="error">❌ No se encontró el estudiante con carné ${carnetVal}</p>`;
+            return;
+        }
+
+        const s = await res.json();
+        box.innerHTML = `
+            <div class="resultado-busqueda">
+                <h4>Estudiante #${s.carnet}</h4>
+                <p><strong>Nombre:</strong> ${s.nombre}</p>
+                <p><strong>Correo:</strong> ${s.correo}</p>
+                <p><strong>Teléfono:</strong> ${s.numero_telefono}</p>
+                <p><strong>Idioma:</strong> ${s.idioma}</p>
+            </div>
+        `;
+    });
+
+    cargar();
+</script>
+</body>
+</html>
