@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulador 3D de Mano Hidráulica</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+        
+        .container {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            height: 100vh;
+            gap: 0;
+        }
+        
+        #canvas-container {
+            position: relative;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+        }
+        
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+        
+        .controls-panel {
+            background: white;
+            padding: 30px;
+            overflow-y: auto;
+            box-shadow: -5px 0 20px rgba(0,0,0,0.3);
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 2em;
+        }
+        
+        .subtitle {
+            color: #666;
+            margin-bottom: 25px;
+            font-size: 0.95em;
+            line-height: 1.4;
+        }
+        
+        .control-group {
+            margin-bottom: 25px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .control-group:last-of-type {
+            border-bottom: none;
+        }
+        
+        .control-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            font-weight: 600;
+            color: #333;
+            font-size: 0.95em;
+        }
+        
+        .percentage {
+            color: #667eea;
+            font-weight: 700;
+        }
+        
+        .syringe-visual {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        
+        .syringe {
+            flex: 1;
+            height: 35px;
+            background: linear-gradient(to right, #e0e0e0, #f5f5f5);
+            border: 2px solid #666;
+            border-radius: 5px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .syringe-plunger {
+            height: 100%;
+            background: linear-gradient(145deg, #4facfe, #00f2fe);
+            border-right: 2px solid #333;
+            transition: width 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            padding-right: 5px;
+        }
+        
+        .plunger-handle {
+            width: 12px;
+            height: 25px;
+            background: #333;
+            border-radius: 3px;
+        }
+        
+        input[type="range"] {
+            width: 100%;
+            height: 6px;
+            border-radius: 5px;
+            background: #ddd;
+            outline: none;
+            -webkit-appearance: none;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+        }
+        
+        input[type="range"]::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+            border: none;
+        }
+        
+        .button-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        .btn {
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.95em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .btn-reset {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .btn-gesture {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        
+        .info-box {
+            background: #e3f2fd;
+            border-left: 4px solid #2196f3;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 20px;
+            font-size: 0.85em;
+            line-height: 1.6;
+            color: #1565c0;
+        }
+        
+        .gesture-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-top: 10px;
+        }
+        
+        .gesture-btn {
+            padding: 8px;
+            background: #f5f5f5;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85em;
+            transition: all 0.2s;
+        }
+        
+        .gesture-btn:hover {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+        
+        .view-hint {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(255,255,255,0.9);
+            padding: 12px 18px;
+            border-radius: 8px;
+            font-size: 0.85em;
+            color: #333;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        }
+        
+        @media (max-width: 968px) {
+            .container {
+                grid-template-columns: 1fr;
+                grid-template-rows: 60vh auto;
+            }
+            
+            .controls-panel {
+                max-height: 40vh;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="canvas-container">
+            <div class="view-hint">🖱️ Arrastra para rotar la vista</div>
+        </div>
+        
+        <div class="controls-panel">
+            <h1>🖐️ Mano Hidráulica 3D</h1>
+            <p class="subtitle">Controla cada dedo usando las jeringas. Los dedos comienzan flexionados y se estiran al inyectar líquido. Arrastra para rotar la vista 3D.</p>
+            
+            <div class="control-group">
+                <div class="control-label">
+                    <span>💉 Pulgar</span>
+                    <span class="percentage" id="value-0">0%</span>
+                </div>
+                <div class="syringe-visual">
+                    <div class="syringe">
+                        <div class="syringe-plunger" id="plunger-0" style="width: 0%;">
+                            <div class="plunger-handle"></div>
+                        </div>
+                    </div>
+                </div>
+                <input type="range" min="0" max="100" value="0" id="finger-0">
+            </div>
+            
+            <div class="control-group">
+                <div class="control-label">
+                    <span>💉 Índice</span>
+                    <span class="percentage" id="value-1">0%</span>
+                </div>
+                <div class="syringe-visual">
+                    <div class="syringe">
+                        <div class="syringe-plunger" id="plunger-1" style="width: 0%;">
+                            <div class="plunger-handle"></div>
+                        </div>
+                    </div>
+                </div>
+                <input type="range" min="0" max="100" value="0" id="finger-1">
+            </div>
+            
+            <div class="control-group">
+                <div class="control-label">
+                    <span>💉 Medio</span>
+                    <span class="percentage" id="value-2">0%</span>
+                </div>
+                <div class="syringe-visual">
+                    <div class="syringe">
+                        <div class="syringe-plunger" id="plunger-2" style="width: 0%;">
+                            <div class="plunger-handle"></div>
+                        </div>
+                    </div>
+                </div>
+                <input type="range" min="0" max="100" value="0" id="finger-2">
+            </div>
+            
+            <div class="control-group">
+                <div class="control-label">
+                    <span>💉 Anular</span>
+                    <span class="percentage" id="value-3">0%</span>
+                </div>
+                <div class="syringe-visual">
+                    <div class="syringe">
+                        <div class="syringe-plunger" id="plunger-3" style="width: 0%;">
+                            <div class="plunger-handle"></div>
+                        </div>
+                    </div>
+                </div>
+                <input type="range" min="0" max="100" value="0" id="finger-3">
+            </div>
+            
+            <div class="control-group">
+                <div class="control-label">
+                    <span>💉 Meñique</span>
+                    <span class="percentage" id="value-4">0%</span>
+                </div>
+                <div class="syringe-visual">
+                    <div class="syringe">
+                        <div class="syringe-plunger" id="plunger-4" style="width: 0%;">
+                            <div class="plunger-handle"></div>
+                        </div>
+                    </div>
+                </div>
+                <input type="range" min="0" max="100" value="0" id="finger-4">
+            </div>
+            
+            <div class="button-group">
+                <button class="btn btn-reset" onclick="resetHand()">🔄 Resetear</button>
+                <button class="btn btn-gesture" onclick="toggleGestures()">✋ Gestos</button>
+            </div>
+            
+            <div class="gesture-buttons" id="gesture-panel" style="display: none;">
+                <button class="gesture-btn" onclick="makeGesture('fist')">✊ Puño</button>
+                <button class="gesture-btn" onclick="makeGesture('point')">☝️ Señalar</button>
+                <button class="gesture-btn" onclick="makeGesture('peace')">✌️ Paz</button>
+                <button class="gesture-btn" onclick="makeGesture('rock')">🤘 Rock</button>
+            </div>
+            
+            <div class="info-box">
+                <strong>💡 Principio Hidráulico:</strong> Los dedos comienzan flexionados (recogidos). Al presionar el émbolo de cada jeringa, inyectas líquido (agua o aceite) que se desplaza por el sistema de tubos hacia otra jeringa conectada al dedo. Esta presión hidráulica hace que el dedo se extienda (estire), demostrando el Principio de Pascal.
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        let scene, camera, renderer, hand;
+        let fingers = [];
+        let fingerValues = [0, 0, 0, 0, 0];
+        
+        function init() {
+            // Configurar escena
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x1a1a2e);
+            
+            // Configurar cámara
+            const container = document.getElementById('canvas-container');
+            camera = new THREE.PerspectiveCamera(
+                50,
+                container.clientWidth / container.clientHeight,
+                0.1,
+                1000
+            );
+            camera.position.set(0, 3, 8);
+            camera.lookAt(0, 0, 0);
+            
+            // Configurar renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            renderer.shadowMap.enabled = true;
+            container.appendChild(renderer.domElement);
+            
+            // Luces
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+            
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(5, 10, 5);
+            directionalLight.castShadow = true;
+            scene.add(directionalLight);
+            
+            const pointLight = new THREE.PointLight(0x667eea, 0.5);
+            pointLight.position.set(-5, 5, 5);
+            scene.add(pointLight);
+            
+            // Crear mano
+            createHand();
+            
+            // Controles de mouse
+            let isDragging = false;
+            let previousMousePosition = { x: 0, y: 0 };
+            
+            container.addEventListener('mousedown', (e) => {
+                isDragging = true;
+                previousMousePosition = { x: e.clientX, y: e.clientY };
+            });
+            
+            container.addEventListener('mousemove', (e) => {
+                if (isDragging) {
+                    const deltaX = e.clientX - previousMousePosition.x;
+                    const deltaY = e.clientY - previousMousePosition.y;
+                    
+                    hand.rotation.y += deltaX * 0.01;
+                    hand.rotation.x += deltaY * 0.01;
+                    
+                    previousMousePosition = { x: e.clientX, y: e.clientY };
+                }
+            });
+            
+            container.addEventListener('mouseup', () => {
+                isDragging = false;
+            });
+            
+            // Configurar controles
+            setupControls();
+            
+            // Manejar redimensionamiento
+            window.addEventListener('resize', onWindowResize);
+            
+            // Iniciar animación
+            animate();
+        }
+        
+        function createHand() {
+            hand = new THREE.Group();
+            
+            // Palma
+            const palmGeometry = new THREE.BoxGeometry(3, 0.4, 2);
+            const palmMaterial = new THREE.MeshPhongMaterial({ 
+                color: 0xffcc99,
+                shininess: 30
+            });
+            const palm = new THREE.Mesh(palmGeometry, palmMaterial);
+            palm.castShadow = true;
+            hand.add(palm);
+            
+            // Configuración de dedos [x, z, altura, ángulo, rotY]
+            const fingerConfigs = [
+                { x: -1.8, z: -0.3, height: 1.2, angle: -0.3, rotY: -0.8 }, // Pulgar
+                { x: -0.8, z: 1.0, height: 1.8, angle: 0, rotY: 0 },    // Índice
+                { x: -0.2, z: 1.0, height: 2.0, angle: 0, rotY: 0 },    // Medio
+                { x: 0.4, z: 1.0, height: 1.9, angle: 0, rotY: 0 },     // Anular
+                { x: 1.0, z: 1.0, height: 1.5, angle: 0, rotY: 0 }      // Meñique
+            ];
+            
+            fingerConfigs.forEach((config, i) => {
+                const finger = createFinger(config.height);
+                finger.position.set(config.x, 0.2, config.z);
+                finger.rotation.z = config.angle;
+                if (config.rotY) {
+                    finger.rotation.y = config.rotY;
+                }
+                hand.add(finger);
+                fingers.push(finger);
+            });
+            
+            scene.add(hand);
+        }
+        
+        function createFinger(height) {
+            const finger = new THREE.Group();
+            const segmentHeight = height / 3;
+            
+            const material = new THREE.MeshPhongMaterial({ 
+                color: 0xffcc99,
+                shininess: 30
+            });
+            
+            // Base
+            const baseGeometry = new THREE.BoxGeometry(0.35, segmentHeight, 0.35);
+            const base = new THREE.Mesh(baseGeometry, material);
+            base.position.y = segmentHeight / 2;
+            base.castShadow = true;
+            finger.add(base);
+            
+            // Segmento medio
+            const midGroup = new THREE.Group();
+            midGroup.position.y = segmentHeight;
+            const midGeometry = new THREE.BoxGeometry(0.33, segmentHeight, 0.33);
+            const mid = new THREE.Mesh(midGeometry, material);
+            mid.position.y = segmentHeight / 2;
+            mid.castShadow = true;
+            midGroup.add(mid);
+            finger.add(midGroup);
+            finger.userData.midJoint = midGroup;
+            
+            // Punta
+            const tipGroup = new THREE.Group();
+            tipGroup.position.y = segmentHeight;
+            const tipGeometry = new THREE.BoxGeometry(0.3, segmentHeight * 0.8, 0.3);
+            const tip = new THREE.Mesh(tipGeometry, material);
+            tip.position.y = segmentHeight * 0.4;
+            tip.castShadow = true;
+            
+            // Punta redondeada
+            const tipTopGeometry = new THREE.SphereGeometry(0.15, 16, 16);
+            const tipTop = new THREE.Mesh(tipTopGeometry, material);
+            tipTop.position.y = segmentHeight * 0.8;
+            tipTop.castShadow = true;
+            
+            tipGroup.add(tip);
+            tipGroup.add(tipTop);
+            midGroup.add(tipGroup);
+            finger.userData.tipJoint = tipGroup;
+            
+            return finger;
+        }
+        
+        function updateFinger(index, value) {
+            const finger = fingers[index];
+            if (!finger) return;
+            
+            // Invertir la lógica: 0% = flexionado, 100% = extendido
+            const angle = ((100 - value) / 100) * Math.PI / 2; // Invertido: de 90 a 0 grados
+            
+            // Rotación progresiva de las articulaciones
+            if (finger.userData.midJoint) {
+                finger.userData.midJoint.rotation.x = -angle * 0.7;
+            }
+            if (finger.userData.tipJoint) {
+                finger.userData.tipJoint.rotation.x = -angle;
+            }
+        }
+        
+        function setupControls() {
+            for (let i = 0; i < 5; i++) {
+                const slider = document.getElementById(`finger-${i}`);
+                const valueDisplay = document.getElementById(`value-${i}`);
+                const plunger = document.getElementById(`plunger-${i}`);
+                
+                slider.addEventListener('input', function() {
+                    const value = parseInt(this.value);
+                    fingerValues[i] = value;
+                    valueDisplay.textContent = value + '%';
+                    plunger.style.width = value + '%';
+                    updateFinger(i, value);
+                });
+            }
+        }
+        
+        function resetHand() {
+            for (let i = 0; i < 5; i++) {
+                const slider = document.getElementById(`finger-${i}`);
+                const valueDisplay = document.getElementById(`value-${i}`);
+                const plunger = document.getElementById(`plunger-${i}`);
+                
+                slider.value = 0;
+                valueDisplay.textContent = '0%';
+                plunger.style.width = '0%';
+                fingerValues[i] = 0;
+                updateFinger(i, 0);
+            }
+        }
+        
+        function toggleGestures() {
+            const panel = document.getElementById('gesture-panel');
+            panel.style.display = panel.style.display === 'none' ? 'grid' : 'none';
+        }
+        
+        function makeGesture(type) {
+            const gestures = {
+                fist: [0, 0, 0, 0, 0],           // Todos flexionados (puño cerrado)
+                point: [0, 100, 0, 0, 0],        // Solo índice extendido
+                peace: [0, 100, 100, 0, 0],      // Índice y medio extendidos
+                rock: [0, 100, 0, 0, 100]        // Índice y meñique extendidos
+            };
+            
+            const values = gestures[type];
+            if (!values) return;
+            
+            values.forEach((value, i) => {
+                const slider = document.getElementById(`finger-${i}`);
+                const valueDisplay = document.getElementById(`value-${i}`);
+                const plunger = document.getElementById(`plunger-${i}`);
+                
+                slider.value = value;
+                valueDisplay.textContent = value + '%';
+                plunger.style.width = value + '%';
+                fingerValues[i] = value;
+                updateFinger(i, value);
+            });
+        }
+        
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            renderer.render(scene, camera);
+        }
+        
+        function onWindowResize() {
+            const container = document.getElementById('canvas-container');
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+        }
+        
+        // Iniciar cuando cargue la página
+        window.addEventListener('load', init);
+    </script>
+</body>
+</html>
